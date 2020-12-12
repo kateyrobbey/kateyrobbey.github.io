@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="author" content="Kate Roberts" />
+    
+    <link rel="shortcut icon" type="image/x-icon" href="../../img/favicon.ico">
+    <title>Analysis of Arrests for Marijuana Possession between 1997 and 2002</title>
+    <meta name="generator" content="Hugo 0.79.0" />
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <link rel="stylesheet" type="text/css" href="../../css/main.css" />
+    <link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,400,200bold,400old" />
+    
+    <!--[if lt IE 9]>
+			<script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+			<script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+		<![endif]-->
+
+    
+  </head>
+
+  <body>
+    <div id="wrap">
+      
+      <nav class="navbar navbar-default">
+  <div class="container">
+    <div class="navbar-header">
+      <a class="navbar-brand" href="../../"><i class="fa fa-home"></i></a>
+      <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <div class="navbar-collapse collapse" id="navbar">
+      <ul class="nav navbar-nav navbar-right">
+      
+        
+        <li><a href="../../post/">BLOG</a></li>
+        
+        <li><a href="../../projects/">PROJECTS</a></li>
+        
+        <li><a href="../../resume/">RESUME</a></li>
+        
+      
+      </ul>
+    </div>
+  </div>
+</nav>
+
+      <div class="container">
+        <div class="blog-post">
+          <h3>
+            <strong><a href="../../project/project2/">Analysis of Arrests for Marijuana Possession between 1997 and 2002</a></strong>
+          </h3>
+        </div>
+ 
+<div class="blog-title">
+          <h4>
+         December 10, 2020 
+            &nbsp;&nbsp;
+            
+          </h4>
+        </div>
+
+        <div class="panel panel-default">
+          <div class="panel-body">
+            <div class="blogpost">
+              
+<link href="../../rmarkdown-libs/anchor-sections/anchor-sections.css" rel="stylesheet" />
+<script src="../../rmarkdown-libs/anchor-sections/anchor-sections.js"></script>
+
+
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p>I have chosen the dataset &quot;Arrests&quot; from the <strong>carData</strong> package. The dataset describes information about individuals arrested in Toronto for simple possession of small quantities of marijuana between 1997 and 2002. The variables in the dataset are as follows: whether or not the person has been released, race (categorized as colour), year, age, sex, whether or not the person is employed, whether or not they are a U.S. citizen, and the number of police data bases (of previous arrests, previous convictions, parole status, etc. – 6 in all) on which the arrestee's name appeared (categorized as checks). The dataset includes 5,226 observations of 8 variables.</p>
+<pre class="r"><code>library(dplyr)
+library(carData)
+library(tidyverse)
+class_diag &lt;- function(probs,truth){
+#CONFUSION MATRIX: CALCULATE ACCURACY, TPR, TNR, PPV
+tab&lt;-table(factor(probs&gt;.5,levels=c(&quot;FALSE&quot;,&quot;TRUE&quot;)),truth)
+acc=sum(diag(tab))/sum(tab)
+sens=tab[2,2]/colSums(tab)[2]
+spec=tab[1,1]/colSums(tab)[1]
+ppv=tab[2,2]/rowSums(tab)[2]
+f1=2*(sens*ppv)/(sens+ppv)
+if(is.numeric(truth)==FALSE &amp; is.logical(truth)==FALSE) truth&lt;-as.numeric(truth)-1
+#CALCULATE EXACT AUC
+ord&lt;-order(probs, decreasing=TRUE)
+probs &lt;- probs[ord]; truth &lt;- truth[ord]
+TPR=cumsum(truth)/max(1,sum(truth))
+FPR=cumsum(!truth)/max(1,sum(!truth))
+dup&lt;-c(probs[-1]&gt;=probs[-length(probs)], FALSE)
+TPR&lt;-c(0,TPR[!dup],1); FPR&lt;-c(0,FPR[!dup],1)
+n &lt;- length(TPR)
+auc&lt;- sum( ((TPR[-1]+TPR[-n])/2) * (FPR[-1]-FPR[-n]) )
+data.frame(acc,sens,spec,ppv,f1,auc)}
+library(rstatix)
+library(sandwich)
+library(lmtest)
+library(plotROC)
+
+data&lt;-Arrests</code></pre>
+</div>
+<div id="manova-testing" class="section level2">
+<h2>1. MANOVA Testing</h2>
+<pre class="r"><code>#Testing Assumptions
+
+group &lt;- data$released
+DVs &lt;- data %&gt;% select(age,checks)
+
+##Multivariate normality for each group 
+
+#Each group is n=25+, so this assumption is met
+
+##Covariance matrices for each group
+
+lapply(split(DVs,group), cov)</code></pre>
+<pre><code>## $No
+##               age    checks
+## age    76.4630598 0.6869077
+## checks  0.6869077 2.4093690
+## 
+## $Yes
+##              age   checks
+## age    67.517325 1.777913
+## checks  1.777913 2.183544</code></pre>
+<pre class="r"><code>#MANOVA Test
+
+man1&lt;-manova(cbind(age,checks)~released, data=data)
+summary(man1)</code></pre>
+<pre><code>##             Df   Pillai approx F num Df den Df    Pr(&gt;F)    
+## released     1 0.062385   173.76      2   5223 &lt; 2.2e-16 ***
+## Residuals 5224                                              
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1</code></pre>
+<pre class="r"><code>#One-Way ANOVAs
+
+summary.aov(man1)</code></pre>
+<pre><code>##  Response age :
+##               Df Sum Sq Mean Sq F value   Pr(&gt;F)   
+## released       1    670  669.77  9.7007 0.001852 **
+## Residuals   5224 360681   69.04                    
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+##  Response checks :
+##               Df  Sum Sq Mean Sq F value    Pr(&gt;F)    
+## released       1   771.2  771.18  347.06 &lt; 2.2e-16 ***
+## Residuals   5224 11608.0    2.22                      
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1</code></pre>
+<pre class="r"><code>#Post-HOC t-Test
+
+pairwise.t.test(data$age, data$released, p.adj = &quot;none&quot;)</code></pre>
+<pre><code>## 
+##  Pairwise comparisons using t tests with pooled SD 
+## 
+## data:  data$age and data$released 
+## 
+##     No    
+## Yes 0.0019
+## 
+## P value adjustment method: none</code></pre>
+<pre class="r"><code>pairwise.t.test(data$checks, data$released, p.adj = &quot;none&quot;)</code></pre>
+<pre><code>## 
+##  Pairwise comparisons using t tests with pooled SD 
+## 
+## data:  data$checks and data$released 
+## 
+##     No    
+## Yes &lt;2e-16
+## 
+## P value adjustment method: none</code></pre>
+<p>A one-way MANOVA test was performed to determine whether age or the number of results in the police database show a mean difference across release status. Each group had 25+ observations, passing the multivariance normality for each group. Examination of covariance matrices for each group revealed relative homogeneity. No univariate or multivariate outliers were evident and MANOVA was considered to be an appropriate analysis technique. Significant differences were found among release status and both age and number of checks. Univariate ANOVAs for each dependent variable were conducted as follow-up tests to the MANOVA, using the Bonferroni method for controlling Type I error rates for multiple comparisons. The univariate ANOVAs for age and number of checks were also significant, p=0.0019 and p=&lt;2e-16, respectively.</p>
+<p>Post-hoc analysis was performed conducting pairwise comparisons to determine which release status differed in age and number of checks. Release status was found to differ for both age and number of checks after adjusting for multiple comparisons (bonferroni α = .05/3=0.01666). I conducted 3 hypothesis tests (one ANOVA, two post-hoc t tests), so probability of at least one type I error is 1-(.95^3) = 0.142625.</p>
+</div>
+<div id="randomization-test" class="section level2">
+<h2>2. Randomization Test</h2>
+<pre class="r"><code>data1&lt;-data%&gt;%mutate(released=ifelse(released==&quot;No&quot;,0,1))
+
+female&lt;-data1%&gt;%summarize(mean(released[sex==&quot;Female&quot;]))%&gt;%pull
+
+male&lt;-data1%&gt;%summarize(mean(released[sex==&quot;Male&quot;]))%&gt;%pull
+
+obs_diff&lt;-female-male
+  
+set.seed(348)
+diffs&lt;-vector()
+
+for(i in 1:1000){
+temp &lt;- data1 %&gt;% mutate(released = sample(data1$released))
+diffs[i] &lt;- temp %&gt;% summarize(mean(released[sex==&quot;Male&quot;]) - mean(released[sex==&quot;Female&quot;]))%&gt;%pull
+}
+
+mean(diffs&gt;obs_diff)</code></pre>
+<pre><code>## [1] 0.044</code></pre>
+<p>For my randomization test, I wanted to see if there was a difference in the release rates of men and women. My null hypothesis would be that women and men were released at equal rates, while my alternative hypothesis would be that there is a difference in the rates at which men and women are released. I first changed the release status to numerics, with &quot;Yes&quot; being 1 and &quot;No&quot; being 2. This would allow me to find the average rates of release for men/women instead of using it as a categorical variable. After running my test, I got a p-value of 0.044, leading me to reject my null hypothesis and conclude that there is indeed a difference in the rates at which women and men are released.</p>
+</div>
+<div id="linear-regression-model" class="section level2">
+<h2>3. Linear Regression Model</h2>
+<pre class="r"><code>#Regression Model
+
+data1$checks_c &lt;- data1$checks - mean(data1$checks)
+fit&lt;-lm(released ~ sex * checks_c, data=data1)
+summary(fit)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = released ~ sex * checks_c, data = data1)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -0.92968  0.07032  0.13138  0.19245  0.43670 
+## 
+## Coefficients:
+##                    Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)       0.8241946  0.0185429  44.448  &lt; 2e-16 ***
+## sexMale           0.0055592  0.0192780   0.288    0.773    
+## checks_c         -0.0617655  0.0121949  -5.065 4.23e-07 ***
+## sexMale:checks_c  0.0007017  0.0126659   0.055    0.956    
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 0.3645 on 5222 degrees of freedom
+## Multiple R-squared:  0.06231,    Adjusted R-squared:  0.06177 
+## F-statistic: 115.7 on 3 and 5222 DF,  p-value: &lt; 2.2e-16</code></pre>
+<pre class="r"><code>#Regression Graph
+
+ggplot(data1, aes(released,checks, color=sex))+geom_smooth(method = &quot;lm&quot;)+geom_point()</code></pre>
+<p><img src="../../project/project2_files/figure-html/unnamed-chunk-4-1.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>#Checking Assumptions
+
+resids&lt;-fit$residuals; fitvals&lt;-fit$fitted.values
+ggplot()+geom_point(aes(fitvals,resids))+geom_hline(yintercept=0, col=&quot;red&quot;)</code></pre>
+<p><img src="../../project/project2_files/figure-html/unnamed-chunk-4-2.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>ggplot()+geom_histogram(aes(resids),bins=20)</code></pre>
+<p><img src="../../project/project2_files/figure-html/unnamed-chunk-4-3.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>#Regression Results
+
+summary(fit)$coef[,1:2]</code></pre>
+<pre><code>##                       Estimate Std. Error
+## (Intercept)       0.8241946275 0.01854292
+## sexMale           0.0055592308 0.01927801
+## checks_c         -0.0617655235 0.01219487
+## sexMale:checks_c  0.0007017353 0.01266593</code></pre>
+<pre class="r"><code>coeftest(fit, vcov=vcovHC(fit))[,1:2]</code></pre>
+<pre><code>##                       Estimate Std. Error
+## (Intercept)       0.8241946275 0.02034777
+## sexMale           0.0055592308 0.02101057
+## checks_c         -0.0617655235 0.01383578
+## sexMale:checks_c  0.0007017353 0.01433358</code></pre>
+<pre class="r"><code>summary(fit)$r.sq</code></pre>
+<pre><code>## [1] 0.06231166</code></pre>
+<p><strong>Regression Model</strong></p>
+<p>I decided to run a linear regression seeing if either sex or the number of checks had an effect on the rate at which prisoners were released. After mean-centering, for female prisoners with an average number of checks, the mean release rate is 0.8241946. According to the coefficient estimates that I got, as the number of checks increases by 1, the chances of getting released decreases by 0.0617655, regardless of gender. If a prisoner is a man with an average number of checks, the chances of getting released increases by 0.0055592 in comparison to females. In addition, if a prisoner is a man, as the number of checks increases by 1, the chances of getting released increases slightly by 0.0007017.</p>
+<p><strong>Regression Graph</strong></p>
+<p>The linear regression graph looks a bit uneventful since the two only possible values for being released are 1 (yes) or 0 (no). However, it does show that men tend to have slightly higher numbers of checks than women do. It also shows us that on average, individuals with lower numbers of checks tend to be released more than people with more checks.</p>
+<p><strong>Checking Assumptions</strong></p>
+<p>According to the assumptions graph, linearity and homoskedasticity look ok. The histogram definitely does not show normality, but again, I think this is due to the general polarity of the individual observations (only 1 or 0 as options).</p>
+<p><strong>Regression Results</strong></p>
+<p>It looks like the results from the recomputed regression match the results from the first. The SE's are slightly larger for the robust results versus the OSL results, but all other variables remain th esame. About 0.06231166 of the variation in outcome is predicted by the model I created. This could imply that there are many other factors that impact the rate at which someone is released.</p>
+</div>
+<div id="bootstrapping" class="section level2">
+<h2>4. Bootstrapping</h2>
+<pre class="r"><code>fitted&lt;-fit$fitted.values
+resid_resamp&lt;-replicate(5000,{
+new_resids&lt;-sample(resids,replace=TRUE) 
+data1$new_y&lt;-fitted+new_resids
+fit1&lt;-lm(new_y ~ sex * checks_c, data=data1)
+coef(fit1) })
+resid_resamp%&gt;%t%&gt;%as.data.frame%&gt;%summarize_all(sd)</code></pre>
+<pre><code>##   (Intercept)    sexMale   checks_c sexMale:checks_c
+## 1  0.01892002 0.01967787 0.01216116       0.01258879</code></pre>
+<pre class="r"><code>resid_resamp%&gt;%t%&gt;%as.data.frame%&gt;%pivot_longer(1:3)%&gt;%group_by(name)%&gt;%
+summarize(lower=quantile(value,.025), upper=quantile(value,.975))</code></pre>
+<pre><code>## # A tibble: 3 x 3
+##   name          lower   upper
+##   &lt;chr&gt;         &lt;dbl&gt;   &lt;dbl&gt;
+## 1 (Intercept)  0.787   0.860 
+## 2 checks_c    -0.0859 -0.0383
+## 3 sexMale     -0.0329  0.0439</code></pre>
+<p>After bootstrapping, the SE values are smaller than both the robust and OSL resluts. The estimates from the 95% CI also pretty accurately describes the results I had achieved from the regular regression earlier. This tells us that we can be 95% confident that the population mean falls between 0.78652 and 0.8604, A.K.A. between 78.6525% and 86.0491% of female prisoners were released, with the male percentages being extremely close to those values as well.</p>
+</div>
+<div id="logistic-regression" class="section level2">
+<h2>5. Logistic Regression</h2>
+<pre class="r"><code>#Coefficient Estimates
+
+fit2&lt;-glm(employed~age+checks, family=&quot;binomial&quot;, data=data1)
+coeftest(fit2)</code></pre>
+<pre><code>## 
+## z test of coefficients:
+## 
+##               Estimate Std. Error  z value Pr(&gt;|z|)    
+## (Intercept)  2.6123712  0.1121029  23.3033  &lt; 2e-16 ***
+## age         -0.0249260  0.0039274  -6.3467  2.2e-10 ***
+## checks      -0.3685933  0.0226537 -16.2708  &lt; 2e-16 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1</code></pre>
+<pre class="r"><code>#Confusion Matrix &amp; AUC
+probs&lt;-predict(fit2,type=&quot;response&quot;) 
+
+table(predict=as.numeric(probs&gt;.5),truth=data$employed)%&gt;%addmargins</code></pre>
+<pre><code>##        truth
+## predict   No  Yes  Sum
+##     0     16   27   43
+##     1   1099 4084 5183
+##     Sum 1115 4111 5226</code></pre>
+<pre class="r"><code>ROC1&lt;-ggplot(data)+geom_roc(aes(d=employed,m=as.numeric(probs&gt;.5)), n.cuts=0)
+calc_auc(ROC1)</code></pre>
+<pre><code>##   PANEL group      AUC
+## 1     1    -1 0.503891</code></pre>
+<pre class="r"><code>#Density Plot
+
+data1$logit&lt;-predict(fit2,type=&quot;link&quot;)
+
+data1%&gt;%ggplot(aes(logit,color=employed,fill=employed))+geom_density(alpha=.4)+
+theme(legend.position=c(.85,.85))+geom_vline(xintercept=0)+xlab(&quot;predictor (logit)&quot;)</code></pre>
+<p><img src="../../project/project2_files/figure-html/unnamed-chunk-6-1.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>#ROC Curve
+
+roc1&lt;-ggplot()+geom_roc(aes(d=data$employed,m=probs))
+
+calc_auc(roc1)</code></pre>
+<pre><code>##   PANEL group       AUC
+## 1     1    -1 0.6800676</code></pre>
+<p>After researching whether or not sex and the number of checks impacts the rate at which a person is released from prison, I wanted to see if there was also any relationship between age/number of checks and whether or not someone is employed. I ran a logistic regression predicting employment from both age and the number of checks a person had.</p>
+<p>Controlling for age, for every 1-unit increase in the number of checks, the odds of employment decreases by a factor of e^(0.3686)=1.4456. In other words, the odds decrease by 44.56%. On the other hand, when controlling for checks, for every 1-unit increase in age, the odds of employment decreases by a factor of e^(0.02492)=1.0252. A.K.A., the odds decrease by 2.52%.</p>
+<p><strong>According to the confusion matrix:</strong></p>
+<p>Sensitivity (true positive rate) = 4084/4111=0.9934323.</p>
+<ul>
+<li>This means that the probability of predicting that someone has a job when they really do is extremely high.</li>
+</ul>
+<p>Specificity (true negative rate) = 16/1115=0.01434978</p>
+<ul>
+<li>This means that the probability of predicting that someone does not have a job when they actually don't is very low.</li>
+</ul>
+<p>Positive predictive value (PPV) = 4084/5183=0.7879606</p>
+<ul>
+<li>This means that a decent amount of employed people are actually classified as employed.</li>
+</ul>
+<p>Area Under the Curve (AUC)=0.503, which indicates the model is a bad fit for the data.</p>
+<p>For the ROC curve, the curve of the line toward the top-left corner indicates that the model has better performance than a random classifier. However, the model has a calculated AUC of 0.68, which is pretty poor and tells us that the model is not the best predictor of employment.</p>
+</div>
+<div id="logistic-regression-2" class="section level2">
+<h2>6. Logistic Regression 2</h2>
+<pre class="r"><code>#Fit Model
+
+fit3&lt;-glm(employed~., data=data1, family=&quot;binomial&quot;)
+coeftest(fit3)</code></pre>
+<pre><code>## 
+## z test of coefficients:
+## 
+##               Estimate Std. Error  z value  Pr(&gt;|z|)    
+## (Intercept) -28.096719  52.411786  -0.5361 0.5919058    
+## released      0.752016   0.084656   8.8832 &lt; 2.2e-16 ***
+## colourWhite   0.288526   0.080560   3.5815 0.0003416 ***
+## year          0.014488   0.026224   0.5525 0.5806366    
+## age          -0.023879   0.003991  -5.9832 2.189e-09 ***
+## sexMale       0.656499   0.121159   5.4185 6.010e-08 ***
+## citizenYes    0.282522   0.100219   2.8191 0.0048166 ** 
+## checks       -0.324806   0.023862 -13.6121 &lt; 2.2e-16 ***
+## checks_c            NA         NA       NA        NA    
+## logit               NA         NA       NA        NA    
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1</code></pre>
+<pre class="r"><code>#Classification Diagnostics
+
+probs2&lt;-predict(fit3,type=&quot;response&quot;)
+
+table(predict=as.numeric(probs2&gt;.5),truth=data$employed)%&gt;%addmargins</code></pre>
+<pre><code>##        truth
+## predict   No  Yes  Sum
+##     0    105   94  199
+##     1   1010 4017 5027
+##     Sum 1115 4111 5226</code></pre>
+<pre class="r"><code>roc2&lt;-ggplot()+geom_roc(aes(d=data$employed,m=probs2))
+
+calc_auc(roc2)</code></pre>
+<pre><code>##   PANEL group       AUC
+## 1     1    -1 0.7077736</code></pre>
+<pre class="r"><code>#10-Fold CV
+
+set.seed(1234)
+k=10
+data &lt;- data1 %&gt;% sample_frac
+folds &lt;- ntile(1:nrow(data),n=10)
+diags&lt;-NULL
+for(i in 1:k){
+train &lt;- data[folds!=i,]
+test &lt;- data[folds==i,]
+truth &lt;- test$employed
+fit &lt;- glm(employed~., data=train, family=&quot;binomial&quot;)
+probs &lt;- predict(fit, newdata=test, type=&quot;response&quot;)
+diags&lt;-rbind(diags,class_diag(probs,truth))
+}
+summarize_all(diags,mean)</code></pre>
+<pre><code>##         acc      sens       spec       ppv       f1      auc
+## 1 0.7876083 0.9755464 0.09631087 0.7991053 0.878324 0.706734</code></pre>
+<pre class="r"><code>fit&lt;-lm(employed~.,data=data1)
+probs&lt;-predict(fit,type=&quot;response&quot;)
+class_diag(probs,data1$employed)</code></pre>
+<pre><code>##           acc sens spec       ppv        f1       auc
+## Yes 0.7866437    1    0 0.7866437 0.8805826 0.7079086</code></pre>
+<pre class="r"><code>#LASSO
+library(glmnet)
+y&lt;-as.matrix(Arrests$employed)
+x&lt;-model.matrix(employed~.,data=Arrests)[,-1] 
+x&lt;-scale(x) 
+cv&lt;-cv.glmnet(x,y,family=&quot;binomial&quot;)
+lasso&lt;-glmnet(x,y,family=&quot;binomial&quot;,lambda=cv$lambda.1se)
+coef(lasso)</code></pre>
+<pre><code>## 8 x 1 sparse Matrix of class &quot;dgCMatrix&quot;
+##                      s0
+## (Intercept)  1.36610428
+## releasedYes  0.19539040
+## colourWhite  0.01465212
+## year         .         
+## age         -0.06715199
+## sexMale      .         
+## citizenYes   .         
+## checks      -0.36231069</code></pre>
+<pre class="r"><code>#LASSO 10-Fold CV
+
+set.seed(1234)
+k=10
+data &lt;- Arrests %&gt;% sample_frac
+folds &lt;- ntile(1:nrow(data),n=10)
+diags&lt;-NULL
+for(i in 1:k){
+train &lt;- data[folds!=i,]
+test &lt;- data[folds==i,]
+truth &lt;- test$employed
+fit &lt;- glm(employed~released+colour+age+checks, data=train, family=&quot;binomial&quot;)
+probs &lt;- predict(fit, newdata=test, type=&quot;response&quot;)
+diags&lt;-rbind(diags,class_diag(probs,truth))
+}
+summarize_all(diags,mean)</code></pre>
+<pre><code>##         acc      sens       spec       ppv        f1       auc
+## 1 0.7822546 0.9733688 0.07942046 0.7957399 0.8753939 0.7040023</code></pre>
+<p><strong>According to the confusion matrix:</strong></p>
+<p>Sensitivity (true positive rate) = 105/199=0.5276</p>
+<ul>
+<li>This means that the probability of predicting that someone has a job when they really do is around half, with all variables considered.</li>
+</ul>
+<p>Specificity (true negative rate) = 4017/5027=0.7991</p>
+<ul>
+<li>This means that the probability of predicting that someone does not have a job when they actually don't is actually relatively high.</li>
+</ul>
+<p>Positive predictive value (PPV) = 105/1115=0.0941704</p>
+<ul>
+<li>This means that the model does not accurately classify a significant number of actually employed people as employed.</li>
+</ul>
+<p>Area Under the Curve (AUC)=0.7078, which indicates the model is a fair fit for the data.</p>
+<p><strong>According to the 10-fold CV:</strong></p>
+<p><em>Out-of-Sample Metrics</em></p>
+<p>Accuracy=0.7876083<br />
+Sensitivity=0.9755464<br />
+Specificity=0.09631087 Precision=0.7991053<br />
+AUC=0.706734</p>
+<p><em>In-Sample Metrics</em></p>
+<p>Accuracy=0.7866437<br />
+Sensitivity=1<br />
+Specificity=0 Precision=0.7866437 AUC=0.7079086</p>
+<p>Being in the 0.7-0.8 range, the out-of-sample performance is fair. The in-sample analysis has an extremely similar AUC of 0.7079086. All of the additional metrics are extremely similar to one another, with no real significant differences.</p>
+<p><strong>Lasso Regression</strong></p>
+<p>After running a Lasso on the data, it actually seems like every variable except for year, sex, and citizen may be decent predictive variables.</p>
+<p><strong>10-Fold LASSO Regression</strong></p>
+<p>Accuracy=0.7822546</p>
+<p>Sensitivity=0.9733688</p>
+<p>Specificity=0.07942046</p>
+<p>Precision=0.7957399</p>
+<p>AUC=0.7040023</p>
+<p>I then ran a 10-fold CV including all of my variables except for the previously mentioned. However, the AUC did not show much change from the previous logistic regressions, still maintaining a value in the low 0.7-0.8 range. This may mean that the original model was not overfitting too much.</p>
+</div>
+
+            
+        <hr>         <div class="related-posts">
+                <h5>Related Posts</h5>
+                
+              </div> 
+            </div>
+          </div>
+
+   <hr>  <div class="disqus">
+  <div id="disqus_thread"></div>
+  <script type="text/javascript">
+
+    (function() {
+      
+      
+      if (window.location.hostname == "localhost")
+        return;
+
+      var disqus_shortname = '';
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+  </script>
+  <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+  <a href="http://disqus.com/" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+</div> 
+        </div>
+      </div>
+    </div>
+
+    
+    <footer>
+  <div id="footer">
+    <div class="container">
+      <p class="text-muted">&copy; All rights reserved. Powered by <a href="https://gohugo.io/">Hugo</a> and
+      <a href="http://www.github.com/nurlansu/hugo-sustain/">sustain</a> with ♥</p>
+    </div>
+  </div>
+</footer>
+<div class="footer"></div>
+
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+<script src="../../js/docs.min.js"></script>
+<script src="../../js/main.js"></script>
+
+<script src="../../js/ie10-viewport-bug-workaround.js"></script>
+
+
+    
+  </body>
+</html>

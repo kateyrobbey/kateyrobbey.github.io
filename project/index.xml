@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Projects on Kate Roberts</title>
+    <link>/project/</link>
+    <description>Recent content in Projects on Kate Roberts</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-US</language>
+    <lastBuildDate>Thu, 10 Dec 2020 00:00:00 +0000</lastBuildDate><atom:link href="/project/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Analysis of Arrests for Marijuana Possession between 1997 and 2002</title>
+      <link>/project/project2/</link>
+      <pubDate>Thu, 10 Dec 2020 00:00:00 +0000</pubDate>
+      
+      <guid>/project/project2/</guid>
+      <description>Introduction I have chosen the dataset &amp;quot;Arrests&amp;quot; from the carData package. The dataset describes information about individuals arrested in Toronto for simple possession of small quantities of marijuana between 1997 and 2002. The variables in the dataset are as follows: whether or not the person has been released, race (categorized as colour), year, age, sex, whether or not the person is employed, whether or not they are a U.</description>
+    </item>
+    
+    <item>
+      <title>Analysis of Murder Rates in the U.S. Between 2014 and 2016</title>
+      <link>/project/project1/</link>
+      <pubDate>Thu, 10 Dec 2020 00:00:00 +0000</pubDate>
+      
+      <guid>/project/project1/</guid>
+      <description>Introduction I have chosen the datasets &amp;quot;murder_2015_final&amp;quot; and &amp;quot;murder_2016_prelim&amp;quot; from the fivethirtyeight package. Both of these datasets measure the approximate number of murders per a specific set of cities in the U.S.. They contain variables relating to the number of murders in 2014 and 2015, the preliminary counts in 2015 and 2016, and the number of change in murders between those years. I found these datasets to be extremely interesting because I am considering perusing a career in the criminal justice field.</description>
+    </item>
+    
+  </channel>
+</rss>

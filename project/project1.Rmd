@@ -1,0 +1,115 @@
+---
+title: "Analysis of Murder Rates in the U.S. Between 2014 and 2016"
+author: "Kate Roberts"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE, fig.align = "center", warning = F, message = F,
+                      R.options=list(max.print=100))
+```
+
+## Introduction
+
+I have chosen the datasets "murder_2015_final" and "murder_2016_prelim" from the **fivethirtyeight** package. Both of these datasets measure the approximate number of murders per a specific set of cities in the U.S.. They contain variables relating to the number of murders in 2014 and 2015, the preliminary counts in 2015 and 2016, and the number of change in murders between those years. I found these datasets to be extremely interesting because I am considering perusing a career in the criminal justice field. I predict that cities will most likely have a relatively similar amount of murders per year - cities with larger counts of murder will continue to have large counts, and vice versa with smaller counts.
+
+Note: The murder counts of 2015 from the 2014-2015 dataset do not necessarily match with the murder counts of 2015 from the 2015-2016 dataset because the 2016 data was preliminary and not yet carried out to the end of the year. Much of the data from 2016 was collected up until August-October and the 2015 data was cut off at the corresponding month. Because of that, the 2015 data from the 2015-2016 dataset is less than the 2015 data from the 2014-2015 dataset. Just wanted elaborate on this since it is not immediately apparent when looking at the datasets.
+
+```{r}
+library(dplyr)
+library(fivethirtyeight)
+library(tidyverse)
+murder_2015 <- as.data.frame(murder_2015_final)
+murder_2016 <- as.data.frame(murder_2016_prelim)
+```
+
+## 1. Tidying
+
+My datasets are already tidied, with each observation having its own row and each variable its own column. Because of this, I will just make them untidy and then tidy them again.
+
+```{r}
+murder_2015 <- murder_2015 %>% pivot_longer(cols="change")
+murder_2015 <- murder_2015 %>% pivot_wider(names_from="name", values_from="value")
+murder_2016 <- murder_2016 %>% pivot_longer(cols="change")
+murder_2016 <- murder_2016 %>% pivot_wider(names_from="name", values_from="value")
+```
+
+## 2. Joining/Merging
+
+I decided to use the *inner_join()* function, since the "murder_2015" dataset had 83 observations but the "murder_2016" dataset had 79. I wanted to compare data from the cities that the datasets have in common, so I thought it would be useful to use *inner_join()* in order to drop the extra 4 observations from the "murder_2016" dataset. Since the majority of the data is in common, I do not expect for there will be any major issues with dropping the 4 extra data points. Also the "change" variable from each dataset was re-named during the merging process, with "change.x" referring to the change in murder between 2014 and 2015, and "change.y" referring to the change in murder between 2015 and 2016. In addition, "murders_2015.x" refers to the 2015 values in comparison to the 2014 values, while "murders_2015.y" refers to the 2015 vaules corresponding to the appropriate preliminary 2016 values.
+
+```{r}
+murder <- inner_join(murder_2015, murder_2016, by="city")
+```
+
+## 3. Wrangling
+
+```{R}
+murder %>% filter(change.x >0 & change.y >0)
+murder <- murder %>% mutate('total_2015' = murders_2014+murders_2015.x)
+murder <- murder %>% mutate('total_2016' = murders_2015.y+murders_2016)
+murder %>% arrange(desc(total_2015))
+murder %>% arrange(desc(total_2016))
+murder<-murder %>% select("state"=state.x, everything())
+murder %>% summarize(mean(change.x), mean(change.y))
+murder%>%summarize(sd(change.x),sd(change.y))
+murder%>%summarize(min(change.x), min(change.y))
+murder%>%summarize(max(change.x), max(change.y))
+murder%>% group_by(state) %>% summarize(mean_change=mean(change.x+change.y))
+murder%>%group_by(state)%>%summarize(sum(change.x+change.y))
+murder%>%summarize(IQR(change.x),IQR(change.y))
+murder = subset(murder, select = -c(state.y))
+```
+
+  I used the **dplyr** functions to examine some of the intersting trends within my data, as well as to clean up my data a bit. Using the *filter()* function, I was able to see that 27 of the 79 observations showed increases in murders over both time periods. Next, I used mutate to create variables for the total of both the 2014-2015 and 2015-2016 murder categories. Then, I used *arrange()* on both of the totals to find out which cities had the highest number of murders - Chicago and New York had the largest numbers for both time periods. Then, I used *select()* to rename one the "state" variable, since its name had been changed during the merging process. 
+  Then, I began to use more of the summary statistics to examine my data. First, I calculated the means for both of the change variables and saw that 2014-2015 had a slightly higher increase in murders than 2015-2016. I then found the min and max of both the change variables and found out that they were actually pretty similar to each other - -19 & -21 and 133 & 158 for the min and max of change.x and change.y, respectively. Then, I grouped by state in order to examine the mean of change per state over both time periods, and found that most of the means were positive, reaffirming the idea that the counts of murder increased per year. Finally, I found the IQR for both of the change variables and found that change.x had an IQR of 18 and change.y had an IQR of 12, implying that both of the change variables had around the same amount of spread.
+
+## 4. Visualizing
+
+```{R}
+murder%>%select_if(is.numeric)%>%cor%>%as.data.frame%>%rownames_to_column%>%pivot_longer(-1)%>%ggplot(aes(rowname,name,fill=value))+geom_tile()+geom_text(aes(label=round(value,2)))+xlab("")+ylab("")+coord_fixed()+ggtitle("Murders Correlation Heatmap")+theme(axis.text.x = element_text(angle = 45, hjust=1))
+```
+
+For the first plot, I created a correlation heatmap for with my numeric variables. The heatmap shows that there are extremely high correlation values between all of the variables involving the actual count of murders, whether that be for the individual years or for the total year. On the other hand, the variables involving the change in murders between years have much smaller correlation values. Both of these trends in correlation values show that there is not a drastic difference in the change of murders per city, and that overall the number of murders were pretty strongly correlated wtih one another.
+
+```{R}
+ggplot(data = murder, aes(x = murders_2014, y = murders_2015.x)) + geom_point(size=4, aes(color = change.x))+ylab("Murders in 2015 (Per City)")+xlab("Murders in 2014 (Per City)")+ggtitle("Correlation in Murders between 2014 and 2015")+theme_minimal()+scale_y_continuous(n.breaks=10)+geom_smooth(method='lm', formula= y~x, linetype="dashed")
+ggplot(data = murder, aes(x = murders_2015.y, y = murders_2016)) + geom_point(size=4, aes(color = change.x))+ylab("Murders in 2016 (Per City)")+xlab("Murders in 2015 (Per City)")+ggtitle("Correlation in Murders between 2014 and 2015")+theme_minimal()+scale_y_continuous(n.breaks=10)+geom_smooth(method='lm', formula= y~x, linetype="dashed")
+```
+
+For the following plots, I decided to examine the correlation between murders between 2014-2015 and 2015-2016 in comparison to the corresponding change in murders value. For the first plot, there is a strong correlation between the murders in 2014 and the murders in 2015 - suggesting that cities that have high levels of murder in one year are likely to have high levels of murder in the following year, and vice versa for low levels of murder. In addition to a strong correlation of murders between years, there is also a strong correlation between the amount of change and the further a point is away from the line of best fit in the plot, with less change being closer to the regression line. This is expected, since the measure of change is determined by the differences between murders of each year and the regression line is extremely close to y=1. The second plot involving murders between 2015-2016 showed all the same trends as the first plot, reaffirming that high murder counts in one year will most likely indicate high counts of murder in the next year, and vice versa with low counts.
+
+## 5. Dimensionality Reduction
+
+```{r}
+library(cluster)
+wss<-vector()
+for(i in 1:10){
+temp<- murder %>% select(murders_2014,murders_2015.x) %>% kmeans(i)
+wss[i]<-temp$tot.withinss
+}
+ggplot()+geom_point(aes(x=1:10,y=wss))+geom_path(aes(x=1:10,y=wss))+
+xlab("clusters")+scale_x_continuous(breaks=1:10)
+
+wss1<-vector()
+for(i in 1:10){
+temp<- murder %>% select(murders_2015.y,murders_2016) %>% kmeans(i)
+wss1[i]<-temp$tot.withinss
+}
+ggplot()+geom_point(aes(x=1:10,y=wss1))+geom_path(aes(x=1:10,y=wss1))+
+xlab("clusters")+scale_x_continuous(breaks=1:10)
+```
+
+First, I used a for-loop to determine the WSS for the range of cluster counts for my data. From the resulting graphs, I determined that 3 clusters would best suit both of my plots.
+
+```{r}
+pam1 <- murder %>% pam(k=3)
+pamclust<-murder %>% mutate(cluster=as.factor(pam1$clustering))
+pamclust %>% ggplot(aes(murders_2014,murders_2015.x,color=cluster)) + geom_point()+xlab("2014 Murders")+ylab("2015 Murders")+ggtitle("Cluster Analysis of 2014-2015 Murders")+theme_minimal()
+pamclust %>% ggplot(aes(murders_2015.y,murders_2016,color=cluster))+geom_point()+xlab("2015 Murders")+ylab("2016 Murders")+ggtitle("Cluster Analysis of 2015-2016 Murders")+theme_minimal()
+pam1$silinfo$avg.width
+pamclust %>% group_by(cluster) %>% summarize_if(is.numeric,mean,na.rm=T)
+```
+
+Next, I used PAM to perform cluster analysis on my data. At first glance, the clusters from both graphs appear to follow the same linear trendline shown in the previous graphs created. I then calculated the means of the variables in each cluster. When looking at the means from each cluster relative to one another, the means for each variable were relatively evenly spread out between clusters. Cluster 1 typically had the highest mean per variable, cluster 3 had the lowest, and the mean of cluster 2 fell somewhere in the middle between the two. This corresponds with the previously mentioned linear trendline of the plot. Finally, I calculated the average silhouette width of my plot to be 0.5872, implying that a reasonable structure has been found and most of my observations seem to belong to the cluster that they are in.

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Posts on Kate Roberts</title>
+    <link>/post/</link>
+    <description>Recent content in Posts on Kate Roberts</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-US</language>
+    <lastBuildDate>Fri, 11 Dec 2020 00:00:00 +0000</lastBuildDate><atom:link href="/post/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Fun with Python and R-Studio</title>
+      <link>/post/2020/12/11/fun-with-python-and-r-studio/</link>
+      <pubDate>Fri, 11 Dec 2020 00:00:00 +0000</pubDate>
+      
+      <guid>/post/2020/12/11/fun-with-python-and-r-studio/</guid>
+      <description>Although Python and R-Studio are both great computing softwares alone, they are especially great when you can get them to talk to one another! I am a new car owner and thought it would be fun to explore some car data collected from cars in the U.S.. Today, I will use R and Python to determine the mean mpg from a sample of cars.
+#R code chunk library(reticulate) library(datasets) cars&amp;lt;-mtcars #Python code chunk r.</description>
+    </item>
+    
+  </channel>
+</rss>

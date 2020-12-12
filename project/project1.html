@@ -1,0 +1,194 @@
+---
+title: "Analysis of Murder Rates in the U.S. Between 2014 and 2016"
+author: "Kate Roberts"
+date: "2020-12-11"
+output: html_document
+---
+
+<link href="/rmarkdown-libs/anchor-sections/anchor-sections.css" rel="stylesheet" />
+<script src="/rmarkdown-libs/anchor-sections/anchor-sections.js"></script>
+
+
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p>I have chosen the datasets &quot;murder_2015_final&quot; and &quot;murder_2016_prelim&quot; from the <strong>fivethirtyeight</strong> package. Both of these datasets measure the approximate number of murders per a specific set of cities in the U.S.. They contain variables relating to the number of murders in 2014 and 2015, the preliminary counts in 2015 and 2016, and the number of change in murders between those years. I found these datasets to be extremely interesting because I am considering perusing a career in the criminal justice field. I predict that cities will most likely have a relatively similar amount of murders per year - cities with larger counts of murder will continue to have large counts, and vice versa with smaller counts.</p>
+<p>Note: The murder counts of 2015 from the 2014-2015 dataset do not necessarily match with the murder counts of 2015 from the 2015-2016 dataset because the 2016 data was preliminary and not yet carried out to the end of the year. Much of the data from 2016 was collected up until August-October and the 2015 data was cut off at the corresponding month. Because of that, the 2015 data from the 2015-2016 dataset is less than the 2015 data from the 2014-2015 dataset. Just wanted elaborate on this since it is not immediately apparent when looking at the datasets.</p>
+<pre class="r"><code>library(dplyr)
+library(fivethirtyeight)
+library(tidyverse)
+murder_2015 &lt;- as.data.frame(murder_2015_final)
+murder_2016 &lt;- as.data.frame(murder_2016_prelim)</code></pre>
+</div>
+<div id="tidying" class="section level2">
+<h2>1. Tidying</h2>
+<p>My datasets are already tidied, with each observation having its own row and each variable its own column. Because of this, I will just make them untidy and then tidy them again.</p>
+<pre class="r"><code>murder_2015 &lt;- murder_2015 %&gt;% pivot_longer(cols=&quot;change&quot;)
+murder_2015 &lt;- murder_2015 %&gt;% pivot_wider(names_from=&quot;name&quot;, values_from=&quot;value&quot;)
+murder_2016 &lt;- murder_2016 %&gt;% pivot_longer(cols=&quot;change&quot;)
+murder_2016 &lt;- murder_2016 %&gt;% pivot_wider(names_from=&quot;name&quot;, values_from=&quot;value&quot;)</code></pre>
+</div>
+<div id="joiningmerging" class="section level2">
+<h2>2. Joining/Merging</h2>
+<p>I decided to use the <em>inner_join()</em> function, since the &quot;murder_2015&quot; dataset had 83 observations but the &quot;murder_2016&quot; dataset had 79. I wanted to compare data from the cities that the datasets have in common, so I thought it would be useful to use <em>inner_join()</em> in order to drop the extra 4 observations from the &quot;murder_2016&quot; dataset. Since the majority of the data is in common, I do not expect for there will be any major issues with dropping the 4 extra data points. Also the &quot;change&quot; variable from each dataset was re-named during the merging process, with &quot;change.x&quot; referring to the change in murder between 2014 and 2015, and &quot;change.y&quot; referring to the change in murder between 2015 and 2016. In addition, &quot;murders_2015.x&quot; refers to the 2015 values in comparison to the 2014 values, while &quot;murders_2015.y&quot; refers to the 2015 vaules corresponding to the appropriate preliminary 2016 values.</p>
+<pre class="r"><code>murder &lt;- inner_join(murder_2015, murder_2016, by=&quot;city&quot;)</code></pre>
+</div>
+<div id="wrangling" class="section level2">
+<h2>3. Wrangling</h2>
+<pre class="r"><code>murder %&gt;% filter(change.x &gt;0 &amp; change.y &gt;0)</code></pre>
+<pre><code>## # A tibble: 27 x 11
+##    city  state.x murders_2014 murders_2015.x change.x state.y murders_2015.y
+##    &lt;chr&gt; &lt;chr&gt;          &lt;int&gt;          &lt;int&gt;    &lt;int&gt; &lt;chr&gt;            &lt;int&gt;
+##  1 Chic… Illino…          411            478       67 Illino…            378
+##  2 Hous… Texas            242            303       61 Texas              191
+##  3 Phil… Pennsy…          248            280       32 Pennsy…            209
+##  4 Kans… Missou…           78            109       31 Missou…             77
+##  5 Nash… Tennes…           41             72       31 Tennes…             47
+##  6 Okla… Oklaho…           45             73       28 Oklaho…             28
+##  7 Loui… Kentuc…           56             81       25 Kentuc…             52
+##  8 Denv… Colora…           31             53       22 Colora…             32
+##  9 Dall… Texas            116            136       20 Texas               95
+## 10 Orla… Florida           15             32       17 Florida             19
+## # … with 17 more rows, and 4 more variables: murders_2016 &lt;int&gt;, source &lt;chr&gt;,
+## #   as_of &lt;date&gt;, change.y &lt;int&gt;</code></pre>
+<pre class="r"><code>murder &lt;- murder %&gt;% mutate(&#39;total_2015&#39; = murders_2014+murders_2015.x)
+murder &lt;- murder %&gt;% mutate(&#39;total_2016&#39; = murders_2015.y+murders_2016)
+murder %&gt;% arrange(desc(total_2015))</code></pre>
+<pre><code>## # A tibble: 79 x 13
+##    city  state.x murders_2014 murders_2015.x change.x state.y murders_2015.y
+##    &lt;chr&gt; &lt;chr&gt;          &lt;int&gt;          &lt;int&gt;    &lt;int&gt; &lt;chr&gt;            &lt;int&gt;
+##  1 Chic… Illino…          411            478       67 Illino…            378
+##  2 New … New Yo…          333            352       19 New Yo…            266
+##  3 Detr… Michig…          298            295       -3 Michig…            216
+##  4 Balt… Maryla…          211            344      133 Maryla…            249
+##  5 Hous… Texas            242            303       61 Texas              191
+##  6 Los … Califo…          260            282       22 Califo…            209
+##  7 Phil… Pennsy…          248            280       32 Pennsy…            209
+##  8 St. … Missou…          159            188       29 Missou…            136
+##  9 New … Louisi…          150            164       14 Louisi…            130
+## 10 Indi… Indiana          136            148       12 Indiana            102
+## # … with 69 more rows, and 6 more variables: murders_2016 &lt;int&gt;, source &lt;chr&gt;,
+## #   as_of &lt;date&gt;, change.y &lt;int&gt;, total_2015 &lt;int&gt;, total_2016 &lt;int&gt;</code></pre>
+<pre class="r"><code>murder %&gt;% arrange(desc(total_2016))</code></pre>
+<pre><code>## # A tibble: 79 x 13
+##    city  state.x murders_2014 murders_2015.x change.x state.y murders_2015.y
+##    &lt;chr&gt; &lt;chr&gt;          &lt;int&gt;          &lt;int&gt;    &lt;int&gt; &lt;chr&gt;            &lt;int&gt;
+##  1 Chic… Illino…          411            478       67 Illino…            378
+##  2 New … New Yo…          333            352       19 New Yo…            266
+##  3 Balt… Maryla…          211            344      133 Maryla…            249
+##  4 Detr… Michig…          298            295       -3 Michig…            216
+##  5 Phil… Pennsy…          248            280       32 Pennsy…            209
+##  6 Los … Califo…          260            282       22 Califo…            209
+##  7 Hous… Texas            242            303       61 Texas              191
+##  8 Memp… Tennes…          140            135       -5 Tennes…            114
+##  9 St. … Missou…          159            188       29 Missou…            136
+## 10 New … Louisi…          150            164       14 Louisi…            130
+## # … with 69 more rows, and 6 more variables: murders_2016 &lt;int&gt;, source &lt;chr&gt;,
+## #   as_of &lt;date&gt;, change.y &lt;int&gt;, total_2015 &lt;int&gt;, total_2016 &lt;int&gt;</code></pre>
+<pre class="r"><code>murder&lt;-murder %&gt;% select(&quot;state&quot;=state.x, everything())
+murder %&gt;% summarize(mean(change.x), mean(change.y))</code></pre>
+<pre><code>## # A tibble: 1 x 2
+##   `mean(change.x)` `mean(change.y)`
+##              &lt;dbl&gt;            &lt;dbl&gt;
+## 1             10.0             5.91</code></pre>
+<pre class="r"><code>murder%&gt;%summarize(sd(change.x),sd(change.y))</code></pre>
+<pre><code>## # A tibble: 1 x 2
+##   `sd(change.x)` `sd(change.y)`
+##            &lt;dbl&gt;          &lt;dbl&gt;
+## 1           22.4           22.0</code></pre>
+<pre class="r"><code>murder%&gt;%summarize(min(change.x), min(change.y))</code></pre>
+<pre><code>## # A tibble: 1 x 2
+##   `min(change.x)` `min(change.y)`
+##             &lt;int&gt;           &lt;int&gt;
+## 1             -19             -21</code></pre>
+<pre class="r"><code>murder%&gt;%summarize(max(change.x), max(change.y))</code></pre>
+<pre><code>## # A tibble: 1 x 2
+##   `max(change.x)` `max(change.y)`
+##             &lt;int&gt;           &lt;int&gt;
+## 1             133             158</code></pre>
+<pre class="r"><code>murder%&gt;% group_by(state) %&gt;% summarize(mean_change=mean(change.x+change.y))</code></pre>
+<pre><code>## # A tibble: 34 x 2
+##    state      mean_change
+##    &lt;chr&gt;            &lt;dbl&gt;
+##  1 Alabama          -1   
+##  2 Alaska           21   
+##  3 Arizona           9.67
+##  4 California        3.64
+##  5 Colorado         15.7 
+##  6 D.C.             43   
+##  7 Florida          15   
+##  8 Georgia          18   
+##  9 Hawaii           -9   
+## 10 Illinois        225   
+## # … with 24 more rows</code></pre>
+<pre class="r"><code>murder%&gt;%group_by(state)%&gt;%summarize(sum(change.x+change.y))</code></pre>
+<pre><code>## # A tibble: 34 x 2
+##    state      `sum(change.x + change.y)`
+##    &lt;chr&gt;                           &lt;int&gt;
+##  1 Alabama                            -1
+##  2 Alaska                             21
+##  3 Arizona                            29
+##  4 California                         51
+##  5 Colorado                           47
+##  6 D.C.                               43
+##  7 Florida                            60
+##  8 Georgia                            18
+##  9 Hawaii                             -9
+## 10 Illinois                          225
+## # … with 24 more rows</code></pre>
+<pre class="r"><code>murder%&gt;%summarize(IQR(change.x),IQR(change.y))</code></pre>
+<pre><code>## # A tibble: 1 x 2
+##   `IQR(change.x)` `IQR(change.y)`
+##             &lt;dbl&gt;           &lt;dbl&gt;
+## 1              18              12</code></pre>
+<pre class="r"><code>murder = subset(murder, select = -c(state.y))</code></pre>
+<p>I used the <strong>dplyr</strong> functions to examine some of the intersting trends within my data, as well as to clean up my data a bit. Using the <em>filter()</em> function, I was able to see that 27 of the 79 observations showed increases in murders over both time periods. Next, I used mutate to create variables for the total of both the 2014-2015 and 2015-2016 murder categories. Then, I used <em>arrange()</em> on both of the totals to find out which cities had the highest number of murders - Chicago and New York had the largest numbers for both time periods. Then, I used <em>select()</em> to rename one the &quot;state&quot; variable, since its name had been changed during the merging process. Then, I began to use more of the summary statistics to examine my data. First, I calculated the means for both of the change variables and saw that 2014-2015 had a slightly higher increase in murders than 2015-2016. I then found the min and max of both the change variables and found out that they were actually pretty similar to each other - -19 &amp; -21 and 133 &amp; 158 for the min and max of change.x and change.y, respectively. Then, I grouped by state in order to examine the mean of change per state over both time periods, and found that most of the means were positive, reaffirming the idea that the counts of murder increased per year. Finally, I found the IQR for both of the change variables and found that change.x had an IQR of 18 and change.y had an IQR of 12, implying that both of the change variables had around the same amount of spread.</p>
+</div>
+<div id="visualizing" class="section level2">
+<h2>4. Visualizing</h2>
+<pre class="r"><code>murder%&gt;%select_if(is.numeric)%&gt;%cor%&gt;%as.data.frame%&gt;%rownames_to_column%&gt;%pivot_longer(-1)%&gt;%ggplot(aes(rowname,name,fill=value))+geom_tile()+geom_text(aes(label=round(value,2)))+xlab(&quot;&quot;)+ylab(&quot;&quot;)+coord_fixed()+ggtitle(&quot;Murders Correlation Heatmap&quot;)+theme(axis.text.x = element_text(angle = 45, hjust=1))</code></pre>
+<p><img src="public/project/project1_files/figure-html/unnamed-chunk-5-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p>For the first plot, I created a correlation heatmap for with my numeric variables. The heatmap shows that there are extremely high correlation values between all of the variables involving the actual count of murders, whether that be for the individual years or for the total year. On the other hand, the variables involving the change in murders between years have much smaller correlation values. Both of these trends in correlation values show that there is not a drastic difference in the change of murders per city, and that overall the number of murders were pretty strongly correlated wtih one another.</p>
+<pre class="r"><code>ggplot(data = murder, aes(x = murders_2014, y = murders_2015.x)) + geom_point(size=4, aes(color = change.x))+ylab(&quot;Murders in 2015 (Per City)&quot;)+xlab(&quot;Murders in 2014 (Per City)&quot;)+ggtitle(&quot;Correlation in Murders between 2014 and 2015&quot;)+theme_minimal()+scale_y_continuous(n.breaks=10)+geom_smooth(method=&#39;lm&#39;, formula= y~x, linetype=&quot;dashed&quot;)</code></pre>
+<p><img src="public/project/project1_files/figure-html/unnamed-chunk-6-1.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>ggplot(data = murder, aes(x = murders_2015.y, y = murders_2016)) + geom_point(size=4, aes(color = change.x))+ylab(&quot;Murders in 2016 (Per City)&quot;)+xlab(&quot;Murders in 2015 (Per City)&quot;)+ggtitle(&quot;Correlation in Murders between 2014 and 2015&quot;)+theme_minimal()+scale_y_continuous(n.breaks=10)+geom_smooth(method=&#39;lm&#39;, formula= y~x, linetype=&quot;dashed&quot;)</code></pre>
+<p><img src="public/project/project1_files/figure-html/unnamed-chunk-6-2.png" width="672" style="display: block; margin: auto;" /></p>
+<p>For the following plots, I decided to examine the correlation between murders between 2014-2015 and 2015-2016 in comparison to the corresponding change in murders value. For the first plot, there is a strong correlation between the murders in 2014 and the murders in 2015 - suggesting that cities that have high levels of murder in one year are likely to have high levels of murder in the following year, and vice versa for low levels of murder. In addition to a strong correlation of murders between years, there is also a strong correlation between the amount of change and the further a point is away from the line of best fit in the plot, with less change being closer to the regression line. This is expected, since the measure of change is determined by the differences between murders of each year and the regression line is extremely close to y=1. The second plot involving murders between 2015-2016 showed all the same trends as the first plot, reaffirming that high murder counts in one year will most likely indicate high counts of murder in the next year, and vice versa with low counts.</p>
+</div>
+<div id="dimensionality-reduction" class="section level2">
+<h2>5. Dimensionality Reduction</h2>
+<pre class="r"><code>library(cluster)
+wss&lt;-vector()
+for(i in 1:10){
+temp&lt;- murder %&gt;% select(murders_2014,murders_2015.x) %&gt;% kmeans(i)
+wss[i]&lt;-temp$tot.withinss
+}
+ggplot()+geom_point(aes(x=1:10,y=wss))+geom_path(aes(x=1:10,y=wss))+
+xlab(&quot;clusters&quot;)+scale_x_continuous(breaks=1:10)</code></pre>
+<p><img src="public/project/project1_files/figure-html/unnamed-chunk-7-1.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>wss1&lt;-vector()
+for(i in 1:10){
+temp&lt;- murder %&gt;% select(murders_2015.y,murders_2016) %&gt;% kmeans(i)
+wss1[i]&lt;-temp$tot.withinss
+}
+ggplot()+geom_point(aes(x=1:10,y=wss1))+geom_path(aes(x=1:10,y=wss1))+
+xlab(&quot;clusters&quot;)+scale_x_continuous(breaks=1:10)</code></pre>
+<p><img src="public/project/project1_files/figure-html/unnamed-chunk-7-2.png" width="672" style="display: block; margin: auto;" /></p>
+<p>First, I used a for-loop to determine the WSS for the range of cluster counts for my data. From the resulting graphs, I determined that 3 clusters would best suit both of my plots.</p>
+<pre class="r"><code>pam1 &lt;- murder %&gt;% pam(k=3)
+pamclust&lt;-murder %&gt;% mutate(cluster=as.factor(pam1$clustering))
+pamclust %&gt;% ggplot(aes(murders_2014,murders_2015.x,color=cluster)) + geom_point()+xlab(&quot;2014 Murders&quot;)+ylab(&quot;2015 Murders&quot;)+ggtitle(&quot;Cluster Analysis of 2014-2015 Murders&quot;)+theme_minimal()</code></pre>
+<p><img src="public/project/project1_files/figure-html/unnamed-chunk-8-1.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>pamclust %&gt;% ggplot(aes(murders_2015.y,murders_2016,color=cluster))+geom_point()+xlab(&quot;2015 Murders&quot;)+ylab(&quot;2016 Murders&quot;)+ggtitle(&quot;Cluster Analysis of 2015-2016 Murders&quot;)+theme_minimal()</code></pre>
+<p><img src="public/project/project1_files/figure-html/unnamed-chunk-8-2.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>pam1$silinfo$avg.width</code></pre>
+<pre><code>## [1] 0.5872346</code></pre>
+<pre class="r"><code>pamclust %&gt;% group_by(cluster) %&gt;% summarize_if(is.numeric,mean,na.rm=T)</code></pre>
+<pre><code>## # A tibble: 3 x 9
+##   cluster murders_2014 murders_2015.x change.x murders_2015.y murders_2016
+##   &lt;fct&gt;          &lt;dbl&gt;          &lt;dbl&gt;    &lt;dbl&gt;          &lt;dbl&gt;        &lt;dbl&gt;
+## 1 1              286.           333.      47.3          245.         267  
+## 2 2               97.3          111.      13.2           83.3         90.6
+## 3 3               25.2           28.6      3.4           18.2         21.3
+## # … with 3 more variables: change.y &lt;dbl&gt;, total_2015 &lt;dbl&gt;, total_2016 &lt;dbl&gt;</code></pre>
+<p>Next, I used PAM to perform cluster analysis on my data. At first glance, the clusters from both graphs appear to follow the same linear trendline shown in the previous graphs created. I then calculated the means of the variables in each cluster. When looking at the means from each cluster relative to one another, the means for each variable were relatively evenly spread out between clusters. Cluster 1 typically had the highest mean per variable, cluster 3 had the lowest, and the mean of cluster 2 fell somewhere in the middle between the two. This corresponds with the previously mentioned linear trendline of the plot. Finally, I calculated the average silhouette width of my plot to be 0.5872, implying that a reasonable structure has been found and most of my observations seem to belong to the cluster that they are in.</p>
+</div>

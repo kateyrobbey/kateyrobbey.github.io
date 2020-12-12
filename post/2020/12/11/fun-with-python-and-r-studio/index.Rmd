@@ -1,0 +1,26 @@
+---
+title: Fun with Python and R-Studio
+author: Kate Roberts
+date: '2020-12-11'
+slug: fun-with-python-and-r-studio
+categories: []
+tags: []
+description: ''
+---
+Although Python and R-Studio are both great computing softwares alone, they are especially great when you can get them to talk to one another! I am a new car owner and thought it would be fun to explore some car data collected from cars in the U.S.. Today, I will use R and Python to determine the mean mpg from a sample of cars.
+
+```{R}
+#R code chunk
+library(reticulate)
+library(datasets)
+cars<-mtcars
+```
+
+```{python}
+#Python code chunk
+r.cars.mpg.mean()
+```
+
+My car has an average of 28 mpg, which is actually above average! Because of this, I thought I would finish off this blog post with a gorgeous stock photo of my car.
+
+![](/2020-12-11-fun-with-python-and-r-studio/index_files/accord.jpg)

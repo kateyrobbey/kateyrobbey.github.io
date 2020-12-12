@@ -1,0 +1,338 @@
+---
+title: "Analysis of Arrests for Marijuana Possession between 1997 and 2002"
+author: "Kate Roberts"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE, fig.align = "center", warning = F, message = F,
+                      R.options=list(max.print=100))
+```
+
+## Introduction
+
+I have chosen the dataset "Arrests" from the **carData** package. The dataset describes information about individuals arrested in Toronto for simple possession of small quantities of marijuana between 1997 and 2002. The variables in the dataset are as follows: whether or not the person has been released, race (categorized as colour), year, age, sex, whether or not the person is employed, whether or not they are a U.S. citizen, and the number of police data bases (of previous arrests, previous convictions, parole status, etc. – 6 in all) on which the arrestee's name appeared (categorized as checks). The dataset includes 5,226 observations of 8 variables.
+```{r}
+library(dplyr)
+library(carData)
+library(tidyverse)
+class_diag <- function(probs,truth){
+#CONFUSION MATRIX: CALCULATE ACCURACY, TPR, TNR, PPV
+tab<-table(factor(probs>.5,levels=c("FALSE","TRUE")),truth)
+acc=sum(diag(tab))/sum(tab)
+sens=tab[2,2]/colSums(tab)[2]
+spec=tab[1,1]/colSums(tab)[1]
+ppv=tab[2,2]/rowSums(tab)[2]
+f1=2*(sens*ppv)/(sens+ppv)
+if(is.numeric(truth)==FALSE & is.logical(truth)==FALSE) truth<-as.numeric(truth)-1
+#CALCULATE EXACT AUC
+ord<-order(probs, decreasing=TRUE)
+probs <- probs[ord]; truth <- truth[ord]
+TPR=cumsum(truth)/max(1,sum(truth))
+FPR=cumsum(!truth)/max(1,sum(!truth))
+dup<-c(probs[-1]>=probs[-length(probs)], FALSE)
+TPR<-c(0,TPR[!dup],1); FPR<-c(0,FPR[!dup],1)
+n <- length(TPR)
+auc<- sum( ((TPR[-1]+TPR[-n])/2) * (FPR[-1]-FPR[-n]) )
+data.frame(acc,sens,spec,ppv,f1,auc)}
+library(rstatix)
+library(sandwich)
+library(lmtest)
+library(plotROC)
+
+data<-Arrests
+```
+
+## 1. MANOVA Testing
+
+```{r}
+#Testing Assumptions
+
+group <- data$released
+DVs <- data %>% select(age,checks)
+
+##Multivariate normality for each group 
+
+#Each group is n=25+, so this assumption is met
+
+##Covariance matrices for each group
+
+lapply(split(DVs,group), cov)
+
+#MANOVA Test
+
+man1<-manova(cbind(age,checks)~released, data=data)
+summary(man1)
+
+#One-Way ANOVAs
+
+summary.aov(man1)
+
+#Post-HOC t-Test
+
+pairwise.t.test(data$age, data$released, p.adj = "none")
+
+pairwise.t.test(data$checks, data$released, p.adj = "none")
+
+```
+A one-way MANOVA test was performed to determine whether age or the number of results in the police database show a mean difference across release status. Each group had 25+ observations, passing the multivariance normality for each group. Examination of covariance matrices for each group revealed relative homogeneity. No univariate or multivariate outliers were evident and MANOVA was considered to be an appropriate analysis technique. Significant differences were found among release status and both age and number of checks.
+Univariate ANOVAs for each dependent variable were conducted as follow-up tests to the MANOVA, using the Bonferroni method for controlling Type I error rates for multiple comparisons. The univariate ANOVAs for age and number of checks were also significant, p=0.0019 and p=<2e-16, respectively. 
+
+Post-hoc analysis was performed conducting pairwise comparisons to determine which release status differed in age and number of checks. Release status was found to differ for both age and number of checks after adjusting for multiple comparisons (bonferroni α = .05/3=0.01666). I conducted 3 hypothesis tests (one ANOVA, two post-hoc t tests), so probability of at least one type I error is 1-(.95^3) = 0.142625.
+
+
+## 2. Randomization Test
+
+```{r}
+data1<-data%>%mutate(released=ifelse(released=="No",0,1))
+
+female<-data1%>%summarize(mean(released[sex=="Female"]))%>%pull
+
+male<-data1%>%summarize(mean(released[sex=="Male"]))%>%pull
+
+obs_diff<-female-male
+  
+set.seed(348)
+diffs<-vector()
+
+for(i in 1:1000){
+temp <- data1 %>% mutate(released = sample(data1$released))
+diffs[i] <- temp %>% summarize(mean(released[sex=="Male"]) - mean(released[sex=="Female"]))%>%pull
+}
+
+mean(diffs>obs_diff)
+```
+For my randomization test, I wanted to see if there was a difference in the release rates of men and women. My null hypothesis would be that women and men were released at equal rates, while my alternative hypothesis would be that there is a difference in the rates at which men and women are released. I first changed the release status to numerics, with "Yes" being 1 and "No" being 2. This would allow me to find the average rates of release for men/women instead of using it as a categorical variable. After running my test, I got a p-value of 0.044, leading me to reject my null hypothesis and conclude that there is indeed a difference in the rates at which women and men are released.
+
+## 3. Linear Regression Model
+
+```{R}
+#Regression Model
+
+data1$checks_c <- data1$checks - mean(data1$checks)
+fit<-lm(released ~ sex * checks_c, data=data1)
+summary(fit)
+
+#Regression Graph
+
+ggplot(data1, aes(released,checks, color=sex))+geom_smooth(method = "lm")+geom_point()
+
+#Checking Assumptions
+
+resids<-fit$residuals; fitvals<-fit$fitted.values
+ggplot()+geom_point(aes(fitvals,resids))+geom_hline(yintercept=0, col="red")
+
+ggplot()+geom_histogram(aes(resids),bins=20)
+
+#Regression Results
+
+summary(fit)$coef[,1:2]
+coeftest(fit, vcov=vcovHC(fit))[,1:2]
+
+summary(fit)$r.sq
+```
+**Regression Model**
+
+I decided to run a linear regression seeing if either sex or the number of checks had an effect on the rate at which prisoners were released. After mean-centering, for female prisoners with an average number of checks, the mean release rate is 0.8241946. According to the coefficient estimates that I got, as the number of checks increases by 1, the chances of getting released decreases by 0.0617655, regardless of gender. If a prisoner is a man with an average number of checks, the chances of getting released increases by 0.0055592 in comparison to females. In addition, if a prisoner is a man, as the number of checks increases by 1, the chances of getting released increases slightly by 0.0007017.
+
+**Regression Graph**
+
+The linear regression graph looks a bit uneventful since the two only possible values for being released are 1 (yes) or 0 (no). However, it does show that men tend to have slightly higher numbers of checks than women do. It also shows us that on average, individuals with lower numbers of checks tend to be released more than people with more checks.
+
+**Checking Assumptions**
+
+According to the assumptions graph, linearity and homoskedasticity look ok. The histogram definitely does not show normality, but again, I think this is due to the general polarity of the individual observations (only 1 or 0 as options).
+
+**Regression Results**
+
+It looks like the results from the recomputed regression match the results from the first.  The SE's are slightly larger for the robust results versus the OSL results, but all other variables remain th esame. About 0.06231166 of the variation in outcome is predicted by the model I created. This could imply that there are many other factors that impact the rate at which someone is released.
+
+## 4. Bootstrapping
+
+```{R}
+fitted<-fit$fitted.values
+resid_resamp<-replicate(5000,{
+new_resids<-sample(resids,replace=TRUE) 
+data1$new_y<-fitted+new_resids
+fit1<-lm(new_y ~ sex * checks_c, data=data1)
+coef(fit1) })
+resid_resamp%>%t%>%as.data.frame%>%summarize_all(sd)
+resid_resamp%>%t%>%as.data.frame%>%pivot_longer(1:3)%>%group_by(name)%>%
+summarize(lower=quantile(value,.025), upper=quantile(value,.975))
+```
+After bootstrapping, the SE values are smaller than both the robust and OSL resluts. The estimates from the 95% CI also pretty accurately describes the results I had achieved from the regular regression earlier. This tells us that we can be 95% confident that the population mean falls between 0.78652 and 0.8604, A.K.A. between 78.6525% and 86.0491% of female prisoners were released, with the male percentages being extremely close to those values as well.
+
+## 5. Logistic Regression
+
+```{r}
+#Coefficient Estimates
+
+fit2<-glm(employed~age+checks, family="binomial", data=data1)
+coeftest(fit2)
+
+#Confusion Matrix & AUC
+probs<-predict(fit2,type="response") 
+
+table(predict=as.numeric(probs>.5),truth=data$employed)%>%addmargins
+
+ROC1<-ggplot(data)+geom_roc(aes(d=employed,m=as.numeric(probs>.5)), n.cuts=0)
+calc_auc(ROC1)
+
+#Density Plot
+
+data1$logit<-predict(fit2,type="link")
+
+data1%>%ggplot(aes(logit,color=employed,fill=employed))+geom_density(alpha=.4)+
+theme(legend.position=c(.85,.85))+geom_vline(xintercept=0)+xlab("predictor (logit)")
+
+#ROC Curve
+
+roc1<-ggplot()+geom_roc(aes(d=data$employed,m=probs))
+
+calc_auc(roc1)
+```
+After researching whether or not sex and the number of checks impacts the rate at which a person is released from prison, I wanted to see if there was also any relationship between age/number of checks and whether or not someone is employed. I ran a logistic regression predicting employment from both age and the number of checks a person had.
+
+Controlling for age, for every 1-unit increase in the number of checks, the odds of employment decreases by a factor of e^(0.3686)=1.4456. In other words, the odds decrease by 44.56%. On the other hand, when controlling for checks, for every 1-unit increase in age, the odds of employment decreases by a factor of e^(0.02492)=1.0252. A.K.A., the odds decrease by 2.52%.
+
+**According to the confusion matrix:**
+
+Sensitivity (true positive rate) = 4084/4111=0.9934323.
+
+  - This means that the probability of predicting that someone has a job when they really do is extremely high.
+  
+Specificity (true negative rate) = 16/1115=0.01434978
+
+ - This means that the probability of predicting that someone does not have a job when they actually don't is very low.
+ 
+Positive predictive value (PPV) = 4084/5183=0.7879606
+
+  - This means that a decent amount of employed people are actually classified as employed.
+  
+Area Under the Curve (AUC)=0.503, which indicates the model is a bad fit for the data.
+
+
+For the ROC curve, the curve of the line toward the top-left corner indicates that the model has better performance than a random classifier. However, the model has a calculated AUC of 0.68, which is pretty poor and tells us that the model is not the best predictor of employment.
+
+
+## 6. Logistic Regression 2
+
+```{r}
+#Fit Model
+
+fit3<-glm(employed~., data=data1, family="binomial")
+coeftest(fit3)
+
+#Classification Diagnostics
+
+probs2<-predict(fit3,type="response")
+
+table(predict=as.numeric(probs2>.5),truth=data$employed)%>%addmargins
+
+roc2<-ggplot()+geom_roc(aes(d=data$employed,m=probs2))
+
+calc_auc(roc2)
+
+#10-Fold CV
+
+set.seed(1234)
+k=10
+data <- data1 %>% sample_frac
+folds <- ntile(1:nrow(data),n=10)
+diags<-NULL
+for(i in 1:k){
+train <- data[folds!=i,]
+test <- data[folds==i,]
+truth <- test$employed
+fit <- glm(employed~., data=train, family="binomial")
+probs <- predict(fit, newdata=test, type="response")
+diags<-rbind(diags,class_diag(probs,truth))
+}
+summarize_all(diags,mean)
+
+fit<-lm(employed~.,data=data1)
+probs<-predict(fit,type="response")
+class_diag(probs,data1$employed)
+
+#LASSO
+library(glmnet)
+y<-as.matrix(Arrests$employed)
+x<-model.matrix(employed~.,data=Arrests)[,-1] 
+x<-scale(x) 
+cv<-cv.glmnet(x,y,family="binomial")
+lasso<-glmnet(x,y,family="binomial",lambda=cv$lambda.1se)
+coef(lasso)
+
+#LASSO 10-Fold CV
+
+set.seed(1234)
+k=10
+data <- Arrests %>% sample_frac
+folds <- ntile(1:nrow(data),n=10)
+diags<-NULL
+for(i in 1:k){
+train <- data[folds!=i,]
+test <- data[folds==i,]
+truth <- test$employed
+fit <- glm(employed~released+colour+age+checks, data=train, family="binomial")
+probs <- predict(fit, newdata=test, type="response")
+diags<-rbind(diags,class_diag(probs,truth))
+}
+summarize_all(diags,mean)
+
+```
+**According to the confusion matrix:**
+
+Sensitivity (true positive rate) = 105/199=0.5276
+
+  - This means that the probability of predicting that someone has a job when they really do is around half, with all variables considered.
+  
+Specificity (true negative rate) = 4017/5027=0.7991
+
+  - This means that the probability of predicting that someone does not have a job when they actually don't is actually relatively high.
+  
+Positive predictive value (PPV) = 105/1115=0.0941704
+
+  - This means that the model does not accurately classify a significant number of actually employed people as employed.
+  
+Area Under the Curve (AUC)=0.7078, which indicates the model is a fair fit for the data.
+
+
+**According to the 10-fold CV:**
+
+*Out-of-Sample Metrics*
+
+Accuracy=0.7876083	
+Sensitivity=0.9755464	
+Specificity=0.09631087
+Precision=0.7991053		
+AUC=0.706734
+
+*In-Sample Metrics*
+
+Accuracy=0.7866437	
+Sensitivity=1	
+Specificity=0
+Precision=0.7866437	
+AUC=0.7079086
+
+Being in the 0.7-0.8 range, the out-of-sample performance is fair. The in-sample analysis has an extremely similar AUC of 0.7079086. All of the additional metrics are extremely similar to one another, with no real significant differences.
+
+**Lasso Regression**
+
+After running a Lasso on the data, it actually seems like every variable except for year, sex, and citizen may be decent predictive variables. 
+
+**10-Fold LASSO Regression**
+
+Accuracy=0.7822546
+
+Sensitivity=0.9733688
+
+Specificity=0.07942046
+
+Precision=0.7957399	
+
+AUC=0.7040023
+
+I then ran a 10-fold CV including all of my variables except for the previously mentioned. However, the AUC did not show much change from the previous logistic regressions, still maintaining a value in the low 0.7-0.8 range. This may mean that the original model was not overfitting too much.

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Kate Roberts</title>
+    <link>/</link>
+    <description>Recent content on Kate Roberts</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-US</language>
+    <lastBuildDate>Fri, 11 Dec 2020 00:00:00 +0000</lastBuildDate><atom:link href="/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Fun with Python and R-Studio</title>
+      <link>/post/2020/12/11/fun-with-python-and-r-studio/</link>
+      <pubDate>Fri, 11 Dec 2020 00:00:00 +0000</pubDate>
+      
+      <guid>/post/2020/12/11/fun-with-python-and-r-studio/</guid>
+      <description>Although Python and R-Studio are both great computing softwares alone, they are especially great when you can get them to talk to one another! I am a new car owner and thought it would be fun to explore some car data collected from cars in the U.S.. Today, I will use R and Python to determine the mean mpg from a sample of cars.
+#R code chunk library(reticulate) library(datasets) cars&amp;lt;-mtcars #Python code chunk r.</description>
+    </item>
+    
+    <item>
+      <title>Analysis of Arrests for Marijuana Possession between 1997 and 2002</title>
+      <link>/project/project2/</link>
+      <pubDate>Thu, 10 Dec 2020 00:00:00 +0000</pubDate>
+      
+      <guid>/project/project2/</guid>
+      <description>Introduction I have chosen the dataset &amp;quot;Arrests&amp;quot; from the carData package. The dataset describes information about individuals arrested in Toronto for simple possession of small quantities of marijuana between 1997 and 2002. The variables in the dataset are as follows: whether or not the person has been released, race (categorized as colour), year, age, sex, whether or not the person is employed, whether or not they are a U.</description>
+    </item>
+    
+    <item>
+      <title>Analysis of Murder Rates in the U.S. Between 2014 and 2016</title>
+      <link>/project/project1/</link>
+      <pubDate>Thu, 10 Dec 2020 00:00:00 +0000</pubDate>
+      
+      <guid>/project/project1/</guid>
+      <description>Introduction I have chosen the datasets &amp;quot;murder_2015_final&amp;quot; and &amp;quot;murder_2016_prelim&amp;quot; from the fivethirtyeight package. Both of these datasets measure the approximate number of murders per a specific set of cities in the U.S.. They contain variables relating to the number of murders in 2014 and 2015, the preliminary counts in 2015 and 2016, and the number of change in murders between those years. I found these datasets to be extremely interesting because I am considering perusing a career in the criminal justice field.</description>
+    </item>
+    
+    <item>
+      <title>Projects</title>
+      <link>/projects/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>/projects/</guid>
+      <description>  Check out some of my coding projects below:
+ Wrangling &amp;amp; Exploratory Data Analysis
+ Modeling, Inference, Prediction
+  -- </description>
+    </item>
+    
+    <item>
+      <title>Resume</title>
+      <link>/resume/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>/resume/</guid>
+      <description>   </description>
+    </item>
+    
+  </channel>
+</rss>
